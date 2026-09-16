@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Interview Room — Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0F98FF;
+    --primary-dark:#0B7AD1;
+    --ink:#0B1B2B;
+    --ink-soft:#33465A;
+    --slate:#5B6B7C;
+    --slate-light:#8B9AAA;
+    --sky:#EAF5FF;
+    --sky-2:#F5FAFF;
+    --white:#FFFFFF;
+    --violet:#7C5CFF;
+    --green:#17B978;
+    --amber:#F5A524;
+    --danger:#EF4444;
+    --border:rgba(11,27,43,0.08);
+    --border-strong:rgba(11,27,43,0.14);
+    --shadow-sm: 0 2px 8px rgba(11,27,43,0.06);
+    --shadow-md: 0 12px 32px rgba(11,27,43,0.10);
+    --shadow-lg: 0 24px 64px rgba(11,27,43,0.16);
+    --radius-card:24px;
+    --radius-btn:14px;
+    --radius-chip:999px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Poppins',sans-serif;
+    color:var(--ink);
+    background:var(--white);
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--primary);color:#fff;}
+  a{text-decoration:none;color:inherit;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  :focus-visible{outline:3px solid var(--primary);outline-offset:3px;border-radius:6px;}
+
+  .stage{position:relative;width:100%;min-height:100vh;}
+  .screen{
+    position:absolute; inset:0;
+    min-height:100vh;
+    opacity:0; visibility:hidden; pointer-events:none;
+    transform: translateY(14px);
+    transition: opacity .5s cubic-bezier(.22,.61,.36,1), transform .5s cubic-bezier(.22,.61,.36,1), visibility 0s linear .5s;
+  }
+  .screen.active{
+    opacity:1; visibility:visible; pointer-events:auto;
+    transform: translateY(0);
+    position:relative;
+    transition: opacity .5s cubic-bezier(.22,.61,.36,1), transform .5s cubic-bezier(.22,.61,.36,1);
+  }
+
+  /* ---------- Utility ---------- */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    padding:15px 28px; border-radius:var(--radius-btn);
+    font-size:15px; font-weight:500; letter-spacing:-0.01em;
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+    white-space:nowrap;
+  }
+  .btn-primary{ background:var(--primary); color:#fff; box-shadow:0 8px 20px rgba(15,152,255,0.28);}
+  .btn-primary:hover{ background:var(--primary-dark); transform:translateY(-1px); box-shadow:0 12px 26px rgba(15,152,255,0.36);}
+  .btn-primary:disabled{background:#B9DDFB; box-shadow:none; cursor:not-allowed; transform:none;}
+  .btn-outline{ background:transparent; color:var(--ink); border:1.5px solid var(--border-strong);}
+  .btn-outline:hover{ border-color:var(--primary); color:var(--primary-dark); background:var(--sky-2);}
+  .btn-ghost{color:var(--slate); font-weight:500; padding:10px 14px;}
+  .btn-ghost:hover{color:var(--ink);}
+  .btn-block{width:100%;}
+
+  .eyebrow{font-size:13px; font-weight:500; color:var(--primary-dark); margin:0 0 10px;}
+  .h1{font-size:clamp(30px,4vw,44px); font-weight:600; letter-spacing:-0.02em; line-height:1.12; margin:0 0 14px;}
+  .h2{font-size:clamp(24px,3vw,30px); font-weight:600; letter-spacing:-0.015em; line-height:1.2; margin:0 0 10px;}
+  .p{font-size:16px; line-height:1.65; color:var(--slate); margin:0;}
+  .p-sm{font-size:14px; line-height:1.6; color:var(--slate);}
+
+  .glass{
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(20px) saturate(160%);
+    -webkit-backdrop-filter:blur(20px) saturate(160%);
+    border:1px solid rgba(255,255,255,0.6);
+    box-shadow:var(--shadow-lg);
+  }
+
+  /* abstract gradient backgrounds */
+  .bg-aurora{
+    position:absolute; inset:0; overflow:hidden; z-index:0;
+    background:
+      radial-gradient(60% 50% at 15% 20%, rgba(15,152,255,0.16), transparent 60%),
+      radial-gradient(50% 45% at 85% 15%, rgba(124,92,255,0.14), transparent 60%),
+      radial-gradient(60% 55% at 50% 100%, rgba(15,152,255,0.10), transparent 60%),
+      linear-gradient(180deg, #FBFDFF 0%, #F4F9FF 100%);
+  }
+  .bg-blob{position:absolute; border-radius:50%; filter:blur(60px); opacity:.55;}
+
+  .logo{display:flex; align-items:center; gap:10px; font-weight:600; font-size:17px; letter-spacing:-0.01em;}
+  .logo-mark{width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,var(--primary),var(--violet)); position:relative; flex-shrink:0;}
+  .logo-mark::after{content:"";position:absolute; inset:7px; border-radius:4px; background:#fff; opacity:.9;}
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 40px; position:relative; z-index:5;
+  }
+  .pill{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 16px; border-radius:var(--radius-chip);
+    background:var(--sky); color:var(--primary-dark);
+    font-size:13px; font-weight:500; border:1px solid rgba(15,152,255,0.18);
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--primary);}
+  .dot.live{animation:pulseDot 1.6s ease-in-out infinite;}
+  @keyframes pulseDot{0%,100%{opacity:1; box-shadow:0 0 0 0 rgba(15,152,255,.5);} 50%{opacity:.7; box-shadow:0 0 0 6px rgba(15,152,255,0);}}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
+  }
+
+  /* ================= PAGE 1 — LANDING / ONBOARDING ================= */
+  #screen-landing .split{ display:grid; grid-template-columns: 1.05fr 1fr; min-height:100vh; }
+  .brand-panel{
+    position:relative; overflow:hidden; padding:56px 64px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    background:linear-gradient(155deg,#0B1B2B 0%, #0E3A66 46%, #0F98FF 100%);
+    color:#fff;
+  }
+  .brand-panel .bg-blob.b1{ width:420px; height:420px; background:#0F98FF; top:-140px; left:-120px; opacity:.55;}
+  .brand-panel .bg-blob.b2{ width:360px; height:360px; background:#7C5CFF; bottom:-140px; right:-80px; opacity:.45;}
+  .brand-grid{ position:absolute; inset:0; background-image:linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px); background-size:44px 44px; mask-image:radial-gradient(ellipse at 30% 30%, black 0%, transparent 70%);}
+  .brand-panel .logo{color:#fff;}
+  .brand-panel .logo-mark{background:#fff;}
+  .brand-panel .logo-mark::after{background:linear-gradient(135deg,var(--primary),var(--violet));}
+  .brand-copy{position:relative; z-index:2; max-width:420px;}
+  .brand-copy .eyebrow{color:#BFE2FF;}
+  .brand-copy h1{font-size:clamp(34px,4vw,50px); font-weight:600; letter-spacing:-0.02em; line-height:1.1; margin:0 0 18px; color:#fff;}
+  .brand-copy p{color:#CFE7FF; font-size:16px; line-height:1.7;}
+  .brand-foot{position:relative; z-index:2; display:flex; gap:36px; color:#9FCBF2; font-size:13px;}
+  .brand-foot b{display:block; color:#fff; font-size:22px; font-weight:600; letter-spacing:-0.02em;}
+
+  .auth-panel{ display:flex; align-items:center; justify-content:center; padding:48px; background:#fff;}
+  .auth-box{width:100%; max-width:380px;}
+  .auth-box h2{font-size:28px;}
+  .auth-box .p{margin-bottom:34px;}
+  .auth-actions{display:flex; flex-direction:column; gap:14px;}
+  .auth-note{margin-top:28px; font-size:13px; color:var(--slate-light); text-align:center;}
+
+  @media (max-width:900px){
+    #screen-landing .split{grid-template-columns:1fr;}
+    .brand-panel{padding:44px 28px; min-height:340px;}
+    .auth-panel{padding:36px 24px;}
+  }
+
+  /* ================= SHARED: full gradient screens with centered glass card ================= */
+  .center-screen{ position:relative; min-height:100vh; display:flex; flex-direction:column;}
+  .center-wrap{ flex:1; display:flex; align-items:center; justify-content:center; padding:24px; position:relative; z-index:2;}
+  .card{ position:relative; z-index:2; width:100%; border-radius:var(--radius-card); padding:44px;}
+  .card-sm{max-width:460px;}
+  .card-md{max-width:620px;}
+  .card-lg{max-width:880px;}
+
+  .role-options{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:26px 0 30px;}
+  .role-chip{
+    padding:22px 18px; border-radius:18px; text-align:left;
+    background:#fff; border:1.5px solid var(--border);
+    transition: all .18s ease; position:relative;
+  }
+  .role-chip:hover{border-color:var(--primary); box-shadow:var(--shadow-sm); transform:translateY(-2px);}
+  .role-chip.selected{ border-color:var(--primary); background:var(--sky-2); box-shadow:0 0 0 3px rgba(15,152,255,0.12);}
+  .role-chip .ico{width:38px; height:38px; border-radius:11px; background:var(--sky); display:flex; align-items:center; justify-content:center; margin-bottom:14px;}
+  .role-chip .ico svg{width:19px; height:19px; stroke:var(--primary-dark);}
+  .role-chip strong{display:block; font-size:15px; font-weight:600; margin-bottom:4px;}
+  .role-chip span{font-size:13px; color:var(--slate);}
+
+  .field{margin-bottom:22px;}
+  .field label{display:block; font-size:13px; font-weight:500; color:var(--ink-soft); margin-bottom:9px;}
+  .code-input{
+    width:100%; padding:15px 18px; border-radius:14px; border:1.5px solid var(--border-strong);
+    font-size:16px; font-family:'JetBrains Mono', monospace; letter-spacing:0.14em; color:var(--ink);
+    background:#fff; transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .code-input:focus{ border-color:var(--primary); box-shadow:0 0 0 4px rgba(15,152,255,0.12);}
+  .helper{font-size:13px; color:var(--slate-light); margin-top:9px;}
+
+  .select-wrap{position:relative;}
+  select.select{
+    width:100%; appearance:none; -webkit-appearance:none;
+    padding:15px 44px 15px 18px; border-radius:14px; border:1.5px solid var(--border-strong);
+    font-size:15px; font-family:'Poppins',sans-serif; color:var(--ink); background:#fff;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  select.select:focus{border-color:var(--primary); box-shadow:0 0 0 4px rgba(15,152,255,0.12);}
+  .select-wrap::after{
+    content:""; position:absolute; right:18px; top:50%; width:9px; height:9px;
+    border-right:2px solid var(--slate); border-bottom:2px solid var(--slate);
+    transform:translateY(-70%) rotate(45deg); pointer-events:none;
+  }
+
+  .id-row{display:flex; align-items:center; gap:14px; padding:16px 18px; border-radius:16px; background:var(--sky-2); border:1px solid var(--border); margin-bottom:26px;}
+  .id-avatar{width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--violet)); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:16px;}
+  .id-row .name{font-weight:600; font-size:15px;}
+  .id-row .sub{font-size:12.5px; color:var(--slate); display:flex; align-items:center; gap:6px; margin-top:2px;}
+  .check-badge{width:15px; height:15px; border-radius:50%; background:var(--green); display:inline-flex; align-items:center; justify-content:center;}
+  .check-badge svg{width:9px; height:9px; stroke:#fff; stroke-width:3;}
+
+  /* ================= INTERVIEW SCREEN ================= */
+  .interview-shell{ min-height:100vh; display:flex; flex-direction:column; background:var(--ink);}
+  .interview-top{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 32px; border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  .interview-top .logo{color:#fff;}
+  .interview-top .logo-mark{background:#fff;}
+  .interview-top .logo-mark::after{background:var(--ink);}
+  .round-tag{font-size:13px; color:#9FB4C7; font-weight:500;}
+  .timer{font-family:'JetBrains Mono',monospace; font-size:14px; color:#fff; background:rgba(255,255,255,0.08); padding:8px 14px; border-radius:10px;}
+
+  .interview-body{ flex:1; display:grid; grid-template-columns:1.2fr 1fr; gap:0; }
+  .ai-pane{
+    position:relative; padding:64px 56px; display:flex; flex-direction:column; justify-content:center;
+    background:radial-gradient(120% 90% at 30% 20%, rgba(15,152,255,0.20), transparent 60%), var(--ink);
+    border-right:1px solid rgba(255,255,255,0.08);
+  }
+  .orb-wrap{display:flex; align-items:center; gap:26px; margin-bottom:38px;}
+  .orb{
+    width:78px; height:78px; border-radius:50%; flex-shrink:0; position:relative;
+    background:conic-gradient(from 180deg, var(--primary), var(--violet), var(--primary));
+    box-shadow:0 0 0 8px rgba(15,152,255,0.10);
+  }
+  .orb::after{content:""; position:absolute; inset:6px; border-radius:50%; background:var(--ink);}
+  .orb.speaking{animation:orbPulse 1.8s ease-in-out infinite;}
+  @keyframes orbPulse{0%,100%{box-shadow:0 0 0 8px rgba(15,152,255,0.10);} 50%{box-shadow:0 0 0 16px rgba(15,152,255,0.18);}}
+  .waves{display:flex; align-items:center; gap:4px; height:30px;}
+  .waves span{width:4px; border-radius:3px; background:var(--primary); animation:wave 1.1s ease-in-out infinite;}
+  .waves span:nth-child(1){height:10px; animation-delay:0s;}
+  .waves span:nth-child(2){height:22px; animation-delay:.12s;}
+  .waves span:nth-child(3){height:14px; animation-delay:.24s;}
+  .waves span:nth-child(4){height:26px; animation-delay:.36s;}
+  .waves span:nth-child(5){height:16px; animation-delay:.48s;}
+  @keyframes wave{0%,100%{transform:scaleY(0.5);} 50%{transform:scaleY(1);}}
+  .ai-label{color:#8FB0C9; font-size:13px; font-weight:500; margin-bottom:10px;}
+  .ai-question{color:#fff; font-size:clamp(22px,2.6vw,30px); font-weight:500; letter-spacing:-0.015em; line-height:1.42; max-width:560px;}
+
+  .you-pane{ padding:56px 44px; display:flex; flex-direction:column; background:#0F2035;}
+  .you-pane .p{color:#B7C7D6;}
+  .transcript{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; margin:24px 0;}
+  .bubble{padding:14px 18px; border-radius:16px; font-size:14.5px; line-height:1.6; max-width:92%;}
+  .bubble.mine{ align-self:flex-end; background:var(--primary); color:#fff; border-bottom-right-radius:5px;}
+  .bubble.ai{ align-self:flex-start; background:rgba(255,255,255,0.06); color:#DCE8F2; border-bottom-left-radius:5px;}
+  .mic-row{display:flex; align-items:center; gap:16px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.08);}
+  .mic-btn{
+    width:56px; height:56px; border-radius:50%; background:var(--primary); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 8px 24px rgba(15,152,255,0.35);
+  }
+  .mic-btn svg{width:22px; height:22px; stroke:#fff;}
+  .mic-status{font-size:13px; color:#9FB4C7;}
+  .mic-status b{color:#fff; display:block; font-size:14px; margin-bottom:2px;}
+
+  .interview-foot{ padding:20px 32px; display:flex; justify-content:flex-end; gap:12px; border-top:1px solid rgba(255,255,255,0.08);}
+
+  @media (max-width:920px){
+    .interview-body{grid-template-columns:1fr;}
+    .ai-pane{border-right:none; border-bottom:1px solid rgba(255,255,255,0.08); padding:40px 26px;}
+    .you-pane{padding:32px 26px;}
+  }
+
+  /* ================= CODE ROUND ================= */
+  .code-body{flex:1; display:grid; grid-template-columns:0.85fr 1.15fr;}
+  .problem-pane{padding:44px 40px; background:#0F2035; overflow-y:auto; border-right:1px solid rgba(255,255,255,0.08);}
+  .problem-pane .tag{display:inline-block; padding:5px 12px; border-radius:8px; background:rgba(15,152,255,0.16); color:#7FC4FF; font-size:12px; font-weight:500; margin-bottom:16px;}
+  .problem-pane h3{color:#fff; font-size:21px; font-weight:600; letter-spacing:-0.01em; margin:0 0 14px;}
+  .problem-pane p{color:#B7C7D6; font-size:14.5px; line-height:1.7; margin:0 0 18px;}
+  .code-block-mini{background:rgba(255,255,255,0.06); border-radius:10px; padding:14px 16px; font-family:'JetBrains Mono',monospace; font-size:13px; color:#DCE8F2; margin-bottom:18px; line-height:1.6;}
+  .editor-pane{display:flex; flex-direction:column; background:#0B1622;}
+  .editor-tabs{display:flex; align-items:center; gap:2px; padding:14px 20px 0;}
+  .tab{padding:10px 16px; font-size:13px; font-family:'JetBrains Mono',monospace; color:#8FA3B6; border-radius:8px 8px 0 0;}
+  .tab.active{background:#0B1622; color:#fff; border:1px solid rgba(255,255,255,0.08); border-bottom:none;}
+  .editor-body{flex:1; padding:22px 26px; font-family:'JetBrains Mono',monospace; font-size:13.5px; line-height:1.9; color:#DCE8F2; overflow-y:auto;}
+  .editor-body .ln{color:#4A5D70; display:inline-block; width:26px; user-select:none;}
+  .kw{color:#7FC4FF;} .fn{color:#B39BFF;} .str{color:#8FE3B0;} .cm{color:#5C7285;}
+  .console{background:#050B12; padding:14px 26px; font-family:'JetBrains Mono',monospace; font-size:12.5px; color:#7FE3A5; border-top:1px solid rgba(255,255,255,0.06); min-height:64px;}
+  .console .muted{color:#5C7285;}
+  .editor-foot{display:flex; justify-content:space-between; align-items:center; padding:16px 26px; border-top:1px solid rgba(255,255,255,0.08);}
+
+  @media (max-width:920px){ .code-body{grid-template-columns:1fr;} .problem-pane{border-right:none; border-bottom:1px solid rgba(255,255,255,0.08);} }
+
+  /* ================= PROGRESS REPORT ================= */
+  .report-grid{display:grid; grid-template-columns:1.3fr 1fr; gap:0;}
+  .report-left{padding:48px;}
+  .report-right{padding:48px; background:var(--sky-2); border-radius:0 var(--radius-card) var(--radius-card) 0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;}
+  .score-row{display:flex; align-items:center; gap:18px; margin-bottom:22px;}
+  .score-big{font-size:52px; font-weight:600; letter-spacing:-0.02em; color:var(--primary-dark);}
+  .skill-row{margin-bottom:16px;}
+  .skill-row .lbl{display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:7px; color:var(--ink-soft); font-weight:500;}
+  .bar-track{height:8px; border-radius:6px; background:var(--border); overflow:hidden;}
+  .bar-fill{height:100%; border-radius:6px; background:linear-gradient(90deg,var(--primary),var(--violet)); width:0%; transition:width 1s cubic-bezier(.22,.61,.36,1);}
+  .qr-box{width:168px; height:168px; border-radius:18px; background:#fff; box-shadow:var(--shadow-md); padding:14px; margin-bottom:22px;}
+  .qr-box canvas{width:100%; height:100%; image-rendering:pixelated;}
+
+  @media (max-width:820px){ .report-grid{grid-template-columns:1fr;} .report-right{border-radius:0 0 var(--radius-card) var(--radius-card); padding:36px 24px;} .report-left{padding:36px 24px;} }
+
+  .progress-track{display:flex; align-items:center; justify-content:center; gap:8px; padding:18px; position:relative; z-index:3;}
+  .progress-track .seg{height:4px; width:34px; border-radius:3px; background:var(--border-strong);}
+  .progress-track .seg.done{background:var(--primary);}
+
+  .restart-fab{
+    position:fixed; bottom:22px; right:22px; z-index:50;
+    padding:11px 18px; border-radius:var(--radius-chip); background:var(--ink); color:#fff;
+    font-size:13px; font-weight:500; box-shadow:var(--shadow-md); display:flex; align-items:center; gap:8px;
+  }
+  .restart-fab:hover{background:#000;}
+
+  /* ================= ADMIN CONSOLE ================= */
+  .admin-shell{min-height:100vh; display:grid; grid-template-columns:264px 1fr; background:var(--ink); color:#fff;}
+  .admin-rail{border-right:1px solid rgba(255,255,255,0.08); padding:28px 20px; display:flex; flex-direction:column;}
+  .admin-rail .logo{color:#fff; margin-bottom:38px;}
+  .admin-rail .logo-mark{background:#fff;}
+  .admin-rail .logo-mark::after{background:linear-gradient(135deg,var(--primary),var(--violet));}
+  .rail-nav{display:flex; flex-direction:column; gap:4px; flex:1;}
+  .rail-item{display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; color:#9FB4C7; font-size:14px; font-weight:500; transition:background .15s ease, color .15s ease;}
+  .rail-item svg{width:18px; height:18px; stroke:currentColor; flex-shrink:0;}
+  .rail-item.active{background:rgba(15,152,255,0.16); color:#fff;}
+  .rail-item:hover:not(.active){background:rgba(255,255,255,0.05); color:#fff;}
+  .rail-foot{display:flex; align-items:center; gap:12px; padding-top:18px; border-top:1px solid rgba(255,255,255,0.08);}
+  .rail-foot .name{font-size:13.5px; font-weight:600; color:#fff;}
+  .rail-foot .role{font-size:12px; color:#8FA3B6;}
+
+  .admin-main{padding:34px 44px 60px; overflow-y:auto; max-height:100vh;}
+  .admin-topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:30px;}
+  .admin-topbar h1{font-size:24px; font-weight:600; letter-spacing:-0.02em; margin:0;}
+  .searchbox{display:flex; align-items:center; gap:10px; background:#0F2035; border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:0 16px; height:44px; width:290px;}
+  .searchbox svg{stroke:#8FA3B6; flex-shrink:0;}
+  .searchbox input{background:none; border:none; color:#fff; font-size:13.5px; width:100%; outline:none; font-family:'Poppins',sans-serif;}
+
+  .kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:34px;}
+  .kpi-card{background:#0F2035; border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:22px; position:relative; overflow:hidden;}
+  .kpi-card::after{content:""; position:absolute; inset:0; background:radial-gradient(70% 60% at 100% 0%, rgba(124,92,255,0.12), transparent 60%); pointer-events:none;}
+  .kpi-card .k-label{font-size:12.5px; color:#8FA3B6; margin-bottom:10px; font-weight:500;}
+  .kpi-card .k-value{font-size:28px; font-weight:600; letter-spacing:-0.02em; color:#fff;}
+  .kpi-card .k-delta{font-size:12px; color:var(--green); margin-top:8px; font-weight:500;}
+
+  .section-title{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+  .section-title h2{font-size:17px; font-weight:600; margin:0; color:#fff;}
+  .section-title p{font-size:12.5px; color:#8FA3B6; margin:3px 0 0;}
+
+  .needs-list{display:flex; flex-direction:column; gap:10px; margin-bottom:36px;}
+  .needs-row{display:flex; align-items:center; gap:16px; background:#0F2035; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px 18px;}
+  .needs-row .urgency{width:8px; height:38px; border-radius:6px; flex-shrink:0;}
+  .u-critical{background:var(--danger);} .u-soon{background:var(--amber);} .u-ok{background:var(--green);}
+  .n-av{width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; color:#fff; flex-shrink:0; background:linear-gradient(135deg,var(--primary),var(--violet));}
+  .n-main{flex:1; min-width:0;}
+  .n-name{font-weight:600; font-size:14.5px; color:#fff;}
+  .n-reason{font-size:12.5px; color:#8FA3B6; margin-top:2px;}
+  .n-time{font-size:12px; font-weight:600; padding:6px 11px; border-radius:8px; white-space:nowrap;}
+  .time-critical{background:rgba(239,68,68,0.16); color:#FF9A9A;}
+  .time-soon{background:rgba(245,165,36,0.16); color:#FFCC85;}
+  .time-ok{background:rgba(23,185,120,0.16); color:#7FE3B0;}
+
+  .cand-list{display:flex; flex-direction:column; gap:10px;}
+  .cand-row{display:flex; align-items:center; gap:16px; background:#0F2035; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px 18px; transition:border-color .15s ease;}
+  .cand-row:hover{border-color:rgba(15,152,255,0.4); cursor:pointer;}
+  .cand-role{font-size:12.5px; color:#8FA3B6; margin-top:2px;}
+  .score-pill{display:flex; align-items:center; gap:8px; width:150px; flex-shrink:0;}
+  .score-pill .bar{flex:1; height:6px; border-radius:4px; background:rgba(255,255,255,0.08); overflow:hidden;}
+  .score-pill .bar i{display:block; height:100%; background:linear-gradient(90deg,var(--primary),var(--violet)); border-radius:4px;}
+  .score-pill .val{font-size:13px; font-weight:600; color:#fff; width:32px; text-align:right; font-family:'JetBrains Mono',monospace;}
+  .status-pill{font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:999px; flex-shrink:0;}
+  .st-progress{background:rgba(15,152,255,0.16); color:#7FC4FF;}
+  .st-done{background:rgba(23,185,120,0.16); color:#7FE3B0;}
+  .st-review{background:rgba(245,165,36,0.16); color:#FFCC85;}
+  .filter-bar{display:flex; gap:10px; margin-bottom:20px;}
+  .chip-filter{background:#0F2035; border:1px solid rgba(255,255,255,0.08); color:#8FA3B6; font-size:13px; font-weight:500; padding:9px 16px; border-radius:999px;}
+  .chip-filter.active{background:rgba(15,152,255,0.16); border-color:rgba(15,152,255,0.4); color:#7FC4FF;}
+
+  .weights-grid{display:grid; grid-template-columns:1fr 320px; gap:22px;}
+  .weight-card{background:#0F2035; border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:26px;}
+  .role-tabs{display:flex; gap:8px; margin-bottom:26px;}
+  .role-tab{background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); color:#8FA3B6; font-size:13px; font-weight:600; padding:9px 16px; border-radius:10px;}
+  .role-tab.active{background:rgba(15,152,255,0.16); border-color:rgba(15,152,255,0.4); color:#7FC4FF;}
+  .slider-row{margin-bottom:26px;}
+  .slider-row .sr-top{display:flex; justify-content:space-between; margin-bottom:10px;}
+  .slider-row .sr-label{font-size:14px; font-weight:600; color:#fff;}
+  .slider-row .sr-sub{font-size:12px; color:#8FA3B6;}
+  .slider-row .sr-val{font-size:15px; font-weight:600; color:#7FC4FF; font-family:'JetBrains Mono',monospace;}
+  input[type=range]{-webkit-appearance:none; width:100%; height:6px; border-radius:4px; background:rgba(255,255,255,0.08); outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--primary); border:3px solid var(--ink); box-shadow:0 0 0 2px var(--primary); cursor:pointer;}
+  input[type=range]:disabled{opacity:.35;}
+  .sum-row{display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid rgba(255,255,255,0.08); margin-top:4px;}
+  .sum-row .sum-lbl{font-size:13px; color:#8FA3B6;}
+  .sum-row .sum-val{font-size:20px; font-weight:700; font-family:'JetBrains Mono',monospace;}
+  .presets-list{display:flex; flex-direction:column; gap:12px;}
+  .preset-item{background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px;}
+  .preset-item .p-name{font-size:13.5px; font-weight:600; color:#fff; margin-bottom:4px;}
+  .preset-item .p-detail{font-size:12px; color:#8FA3B6; font-family:'JetBrains Mono',monospace;}
+
+  .drawer-overlay{position:fixed; inset:0; background:rgba(3,7,15,0.6); z-index:200; display:none; align-items:stretch; justify-content:flex-end;}
+  .drawer-overlay.open{display:flex;}
+  .drawer{width:440px; background:#0F2035; border-left:1px solid rgba(255,255,255,0.08); padding:32px; overflow-y:auto; color:#fff;}
+  .drawer h3{font-size:20px; margin:0 0 4px; font-weight:600;}
+  .drawer .sub{font-size:13px; color:#8FA3B6; margin-bottom:24px;}
+  .composite-banner{background:linear-gradient(135deg, rgba(15,152,255,0.2), rgba(124,92,255,0.12)); border:1px solid rgba(15,152,255,0.3); border-radius:16px; padding:20px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between;}
+  .composite-banner .cb-val{font-size:32px; font-weight:700; color:#fff; font-family:'JetBrains Mono',monospace;}
+  .composite-banner .cb-label{font-size:12px; color:#7FC4FF; font-weight:600; text-align:right; max-width:150px;}
+  .breakdown-row{margin-bottom:20px;}
+  .breakdown-row .br-top{display:flex; justify-content:space-between; margin-bottom:8px; font-size:13.5px; font-weight:600;}
+  .breakdown-row .bar{height:8px; border-radius:5px; background:rgba(255,255,255,0.08); overflow:hidden; margin-bottom:8px;}
+  .breakdown-row .bar i{display:block; height:100%; border-radius:5px;}
+  .breakdown-row .rationale{font-size:12.5px; color:#8FA3B6; line-height:1.6;}
+
+  @media (max-width:1100px){
+    .admin-shell{grid-template-columns:1fr;}
+    .admin-rail{display:none;}
+    .kpi-grid{grid-template-columns:1fr 1fr;}
+    .weights-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+
+  <!-- ============ PAGE 1 — AI INTERVIEW ROOM / ONBOARDING SCREEN ============ -->
+  <section class="screen active" id="screen-landing">
+    <div class="split">
+      <div class="brand-panel">
+        <div class="brand-grid"></div>
+        <div class="bg-blob b1"></div>
+        <div class="bg-blob b2"></div>
+        <div class="logo" style="position:relative; z-index:2;">
+          <span class="logo-mark"></span> Ambit
+        </div>
+        <div class="brand-copy">
+          <p class="eyebrow">AI Interview Room</p>
+          <h1>Interviews that adapt to every candidate, live.</h1>
+          <p>One room for the whole hiring loop — screening conversation, live coding round, and a shareable report the moment it ends.</p>
+        </div>
+        <div class="brand-foot">
+          <div><b>4.2 min</b> avg. setup time</div>
+          <div><b>12k+</b> interviews run</div>
+          <div><b>98%</b> candidate completion</div>
+        </div>
+      </div>
+      <div class="auth-panel">
+        <div class="auth-box">
+          <h2 class="h2">Welcome to AI Interview Room</h2>
+          <p class="p">Sign in to join a scheduled interview, or manage rooms as an admin.</p>
+          <div class="auth-actions">
+            <button class="btn btn-outline btn-block" onclick="go('screen-role')">Candidate Login</button>
+            <button class="btn btn-primary btn-block" onclick="go('screen-admin-login')">Admin Login</button>
+          </div>
+          <p class="auth-note">By continuing you agree to the interview recording &amp; assessment policy.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 2 — SELECT ROLE ============ -->
+  <section class="screen" id="screen-role">
+    <div class="center-screen">
+      <div class="bg-aurora"><div class="bg-blob" style="width:360px;height:360px;background:#0F98FF;top:-100px;left:8%;"></div><div class="bg-blob" style="width:300px;height:300px;background:#7C5CFF;bottom:-80px;right:10%;"></div></div>
+      <div class="topbar" style="position:relative; z-index:3;">
+        <div class="logo"><span class="logo-mark"></span> Ambit</div>
+        <button class="btn btn-ghost" onclick="go('screen-landing')">← Back</button>
+      </div>
+      <div class="center-wrap">
+        <div class="card glass card-sm">
+          <p class="eyebrow">Step 1 of 3</p>
+          <h2 class="h2">Select your role</h2>
+          <p class="p" style="margin-bottom:24px;">Choose the option that matches your invitation email.</p>
+
+          <div class="role-options">
+            <button class="role-chip" id="chip-student" onclick="selectRole('student')">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg></span>
+              <strong>Student Candidate</strong>
+              <span>Campus or graduate hiring track</span>
+            </button>
+            <button class="role-chip" id="chip-industry" onclick="selectRole('industry')">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21V7l6-4 6 4v14"/><path d="M10 21v-6h4v6"/></svg></span>
+              <strong>Industry Candidate</strong>
+              <span>Experienced-hire track</span>
+            </button>
+          </div>
+
+          <div class="field">
+            <label for="code-input">Enter your unique code</label>
+            <input id="code-input" class="code-input" maxlength="6" placeholder="7 K 4 D 2 X" oninput="checkRoleForm()">
+            <p class="helper">When you applied for this role, we sent this code to your mobile number.</p>
+          </div>
+
+          <button class="btn btn-primary btn-block" id="role-next" disabled onclick="goToPosition()">Next</button>
+        </div>
+      </div>
+      <div class="progress-track"><span class="seg done"></span><span class="seg"></span><span class="seg"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 3.2 — SELECT POSITION (INDUSTRY) ============ -->
+  <section class="screen" id="screen-position-industry">
+    <div class="center-screen">
+      <div class="bg-aurora"><div class="bg-blob" style="width:320px;height:320px;background:#7C5CFF;top:-90px;right:12%;"></div><div class="bg-blob" style="width:300px;height:300px;background:#0F98FF;bottom:-100px;left:10%;"></div></div>
+      <div class="topbar" style="position:relative; z-index:3;">
+        <div class="logo"><span class="logo-mark"></span> Ambit</div>
+        <button class="btn btn-ghost" onclick="go('screen-role')">← Back</button>
+      </div>
+      <div class="center-wrap">
+        <div class="card glass card-sm">
+          <p class="eyebrow">Step 2 of 3</p>
+          <h2 class="h2">Select your position</h2>
+
+          <div class="id-row">
+            <div class="id-avatar">AR</div>
+            <div>
+              <div class="name">Aarav Rahman</div>
+              <div class="sub"><span class="check-badge"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5"/></svg></span> CV received &amp; verified</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="position-select-industry">Position</label>
+            <div class="select-wrap">
+              <select id="position-select-industry" class="select" onchange="checkPositionForm('position-select-industry','position-next-industry')">
+                <option value="" disabled selected>Choose a position</option>
+                <option value="uiux">UI/UX Designer — non-coding round</option>
+                <option value="pm">Project Manager — non-coding round</option>
+                <option value="backend">Back End Developer — coding round</option>
+                <option value="ml">ML Engineer — coding round</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block" id="position-next-industry" disabled onclick="joinInterview()">Join Interview</button>
+        </div>
+      </div>
+      <div class="progress-track"><span class="seg done"></span><span class="seg done"></span><span class="seg"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 3.1 — SELECT POSITION (STUDENT) ============ -->
+  <section class="screen" id="screen-position-student">
+    <div class="center-screen">
+      <div class="bg-aurora"><div class="bg-blob" style="width:320px;height:320px;background:#7C5CFF;top:-90px;right:12%;"></div><div class="bg-blob" style="width:300px;height:300px;background:#0F98FF;bottom:-100px;left:10%;"></div></div>
+      <div class="topbar" style="position:relative; z-index:3;">
+        <div class="logo"><span class="logo-mark"></span> Ambit</div>
+        <button class="btn btn-ghost" onclick="go('screen-role')">← Back</button>
+      </div>
+      <div class="center-wrap">
+        <div class="card glass card-sm">
+          <p class="eyebrow">Step 2 of 3</p>
+          <h2 class="h2">Select your track</h2>
+
+          <div class="id-row">
+            <div class="id-avatar">RA</div>
+            <div>
+              <div class="name">Riya Anand — Final year, B.Tech CSE</div>
+              <div class="sub"><span class="check-badge"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5"/></svg></span> Resume received &amp; verified</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="position-select-student">Track</label>
+            <div class="select-wrap">
+              <select id="position-select-student" class="select" onchange="checkPositionForm('position-select-student','position-next-student')">
+                <option value="" disabled selected>Choose a track</option>
+                <option value="uiux">UI/UX Designer — Intern, non-coding round</option>
+                <option value="pm">Project Manager — Grad track, non-coding round</option>
+                <option value="backend">Back End Developer — Intern, coding round</option>
+                <option value="ml">ML Engineer — Grad track, coding round</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block" id="position-next-student" disabled onclick="joinInterview()">Join Interview</button>
+        </div>
+      </div>
+      <div class="progress-track"><span class="seg done"></span><span class="seg done"></span><span class="seg"></span></div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 4a — NON-CODER / ROUND 1 AI INTERVIEW ============ -->
+  <section class="screen" id="screen-interview">
+    <div class="interview-shell">
+      <div class="interview-top">
+        <div class="logo"><span class="logo-mark"></span> Ambit</div>
+        <span class="round-tag" id="round-label">Conversation round</span>
+        <div style="display:flex; align-items:center; gap:14px;">
+          <span class="pill"><span class="dot live"></span> Recording</span>
+          <span class="timer" id="timer-1">08:42</span>
+        </div>
+      </div>
+      <div class="interview-body">
+        <div class="ai-pane">
+          <div class="orb-wrap">
+            <div class="orb speaking"></div>
+            <div class="waves"><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+          <p class="ai-label">Interviewer is asking</p>
+          <p class="ai-question" id="ai-question">Walk me through a project where you had to balance user needs against a tight deadline. What trade-off did you make?</p>
+        </div>
+        <div class="you-pane">
+          <p class="eyebrow" style="color:#7FC4FF;">Your response</p>
+          <div class="transcript">
+            <div class="bubble ai">Tell me a bit about your background before we start.</div>
+            <div class="bubble mine">Sure — I've spent the last two years focused on product work, mostly on fast-moving teams where scope shifted often.</div>
+            <div class="bubble ai">Good. Let's go deeper on how you handle trade-offs.</div>
+          </div>
+          <div class="mic-row">
+            <div class="mic-btn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"/></svg></div>
+            <div class="mic-status"><b>Listening</b>Speak naturally — the interviewer will follow up.</div>
+          </div>
+        </div>
+      </div>
+      <div class="interview-foot">
+        <button class="btn btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.2);" onclick="toastMsg('Answer skipped for this question.')">Skip question</button>
+        <button class="btn btn-primary" id="interview-next-btn" onclick="finishFirstRound()">End Interview</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 4b — CODER ROUND 2 ============ -->
+  <section class="screen" id="screen-code">
+    <div class="interview-shell">
+      <div class="interview-top">
+        <div class="logo"><span class="logo-mark"></span> Ambit</div>
+        <span class="round-tag">Round 2 · Live coding</span>
+        <div style="display:flex; align-items:center; gap:14px;">
+          <span class="pill"><span class="dot live"></span> Recording</span>
+          <span class="timer" id="timer-2">14:05</span>
+        </div>
+      </div>
+      <div class="code-body">
+        <div class="problem-pane">
+          <span class="tag">Problem 1 of 1</span>
+          <h3>Merge overlapping intervals</h3>
+          <p>Given a list of time-slot bookings, merge any that overlap and return the minimal set of non-overlapping ranges, sorted by start time.</p>
+          <div class="code-block-mini"><span class="cm">// Example</span><br>input:  [[1,3],[2,6],[8,10]]<br>output: [[1,6],[8,10]]</div>
+          <p style="color:#8FA3B6; font-size:13px;">You can talk through your approach out loud — the interviewer is listening and may ask a follow-up once you submit.</p>
+        </div>
+        <div class="editor-pane">
+          <div class="editor-tabs"><span class="tab active">solution.js</span></div>
+          <div class="editor-body">
+<span class="ln">1</span><span class="kw">function</span> <span class="fn">mergeIntervals</span>(slots) {
+<span class="ln">2</span>&nbsp;&nbsp;slots.sort((a, b) =&gt; a[0] - b[0]);
+<span class="ln">3</span>&nbsp;&nbsp;<span class="kw">const</span> result = [];
+<span class="ln">4</span>
+<span class="ln">5</span>&nbsp;&nbsp;<span class="kw">for</span> (<span class="kw">const</span> slot <span class="kw">of</span> slots) {
+<span class="ln">6</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// merge if it overlaps the last range</span>
+<span class="ln">7</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">const</span> last = result[result.length - 1];
+<span class="ln">8</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> (last &amp;&amp; slot[0] &lt;= last[1]) {
+<span class="ln">9</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;last[1] = <span class="fn">Math.max</span>(last[1], slot[1]);
+<span class="ln">10</span>&nbsp;&nbsp;&nbsp;&nbsp;} <span class="kw">else</span> {
+<span class="ln">11</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;result.push(slot);
+<span class="ln">12</span>&nbsp;&nbsp;&nbsp;&nbsp;}
+<span class="ln">13</span>&nbsp;&nbsp;}
+<span class="ln">14</span>&nbsp;&nbsp;<span class="kw">return</span> result;
+<span class="ln">15</span>}</div>
+          <div class="console" id="console-out"><span class="muted">Console ready. Click "Run tests" to check your solution.</span></div>
+          <div class="editor-foot">
+            <button class="btn btn-outline" style="color:#fff; border-color:rgba(255,255,255,0.2);" onclick="runTests()">Run tests</button>
+            <button class="btn btn-primary" onclick="finishInterview()">End Interview</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE — STUDENT PROGRESS REPORT ============ -->
+  <section class="screen" id="screen-report">
+    <div class="center-screen">
+      <div class="bg-aurora"></div>
+      <div class="topbar" style="position:relative; z-index:3;"><div class="logo"><span class="logo-mark"></span> Ambit</div></div>
+      <div class="center-wrap">
+        <div class="card glass card-lg" style="padding:0; overflow:hidden;">
+          <div class="report-grid">
+            <div class="report-left">
+              <p class="eyebrow">Interview complete</p>
+              <h2 class="h2">Nice work, Aarav.</h2>
+              <p class="p" style="margin-bottom:28px;">Here's how this round went. Your full report has also been sent to the placement cell.</p>
+              <div class="score-row">
+                <span class="score-big">84</span>
+                <div><div style="font-weight:600; font-size:14px;">Overall score</div><div class="p-sm">Top 18% of this cohort</div></div>
+              </div>
+              <div class="skill-row"><div class="lbl"><span>Communication</span><span>90%</span></div><div class="bar-track"><div class="bar-fill" data-w="90"></div></div></div>
+              <div class="skill-row"><div class="lbl"><span>Problem solving</span><span>82%</span></div><div class="bar-track"><div class="bar-fill" data-w="82"></div></div></div>
+              <div class="skill-row"><div class="lbl"><span>Role fit</span><span>78%</span></div><div class="bar-track"><div class="bar-fill" data-w="78"></div></div></div>
+            </div>
+            <div class="report-right">
+              <p class="eyebrow">Scan to save</p>
+              <div class="qr-box"><canvas id="qr-canvas" width="21" height="21"></canvas></div>
+              <p class="p-sm" style="margin-bottom:20px;">Scan with your phone to download the full progress report as a PDF.</p>
+              <button class="btn btn-primary btn-block" onclick="toastMsg('Report downloaded.')">Download report</button>
+              <button class="btn btn-ghost" style="margin-top:6px;" onclick="go('screen-landing')">Return to start</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE — ADMIN LOGIN ============ -->
+  <section class="screen" id="screen-admin-login">
+    <div class="center-screen">
+      <div class="bg-aurora"><div class="bg-blob" style="width:360px;height:360px;background:#0F98FF;top:-100px;right:8%;"></div><div class="bg-blob" style="width:300px;height:300px;background:#7C5CFF;bottom:-90px;left:10%;"></div></div>
+      <div class="topbar" style="position:relative; z-index:3;">
+        <div class="logo"><span class="logo-mark"></span> Ambit</div>
+        <button class="btn btn-ghost" onclick="go('screen-landing')">← Back</button>
+      </div>
+      <div class="center-wrap">
+        <div class="card glass card-sm">
+          <p class="eyebrow">Admin console</p>
+          <h2 class="h2">Sign in to Ambit</h2>
+          <p class="p" style="margin-bottom:26px;">For hiring managers and recruiting operations.</p>
+
+          <div class="field">
+            <label for="admin-email">Work email</label>
+            <input id="admin-email" class="code-input" style="letter-spacing:normal; font-family:'Poppins',sans-serif;" placeholder="you@company.com">
+          </div>
+          <div class="field">
+            <label for="admin-pass">Password</label>
+            <input id="admin-pass" type="password" class="code-input" style="letter-spacing:normal; font-family:'Poppins',sans-serif;" placeholder="••••••••••">
+          </div>
+
+          <button class="btn btn-primary btn-block" onclick="go('screen-admin'); adminGoTo('dashboard')">Sign in</button>
+          <p class="auth-note">Single sign-on is available for enterprise workspaces.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE — ADMIN CONSOLE (Dashboard / Candidates / Scoring weights) ============ -->
+  <section class="screen" id="screen-admin">
+    <div class="admin-shell">
+      <aside class="admin-rail">
+        <div class="logo"><span class="logo-mark"></span> Ambit</div>
+        <nav class="rail-nav">
+          <a class="rail-item active" id="rail-dashboard" onclick="adminGoTo('dashboard')">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            Dashboard
+          </a>
+          <a class="rail-item" id="rail-candidates" onclick="adminGoTo('candidates')">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-4 3-6.5 6.5-6.5S15.5 16 15.5 20"/><circle cx="18" cy="9" r="2.6"/><path d="M15.5 20c0-3 1.8-5.4 4-6.2"/></svg>
+            Candidates
+          </a>
+          <a class="rail-item" id="rail-weights" onclick="adminGoTo('weights')">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 6h16M4 6a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM4 18h16M16 18a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM4 12h16M10 12a2 2 0 1 0 4 0 2 2 0 0 0-4 0z"/></svg>
+            Scoring weights
+          </a>
+          <a class="rail-item" onclick="go('screen-admin-login')">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+            Log out
+          </a>
+        </nav>
+        <div class="rail-foot">
+          <div class="id-avatar" style="width:36px;height:36px;border-radius:10px;font-size:13px;">NF</div>
+          <div><div class="name">Nadia Farooqi</div><div class="role">Talent Operations</div></div>
+        </div>
+      </aside>
+
+      <!-- ---- Dashboard panel ---- -->
+      <main class="admin-main" id="admin-panel-dashboard">
+        <div class="admin-topbar">
+          <h1>Cohort overview</h1>
+          <div class="searchbox">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" placeholder="Search candidates, roles, codes...">
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="k-label">Active candidates</div><div class="k-value">184</div><div class="k-delta">↑ 12 today</div></div>
+          <div class="kpi-card"><div class="k-label">Cohort composite avg.</div><div class="k-value">74.2</div><div class="k-delta">↑ 2.1 vs last week</div></div>
+          <div class="kpi-card"><div class="k-label">Interviews completed</div><div class="k-value">96%</div><div class="k-delta">↑ 3% completion</div></div>
+          <div class="kpi-card"><div class="k-label">Open roles hiring</div><div class="k-value">6</div><div class="k-delta" style="color:#8FA3B6;">2 technical</div></div>
+        </div>
+
+        <div class="section-title">
+          <div><h2>Needs you</h2><p>Ranked by what expires soonest — decide before the window closes.</p></div>
+        </div>
+        <div class="needs-list">
+          <div class="needs-row">
+            <div class="urgency u-critical"></div>
+            <div class="n-av" style="background:linear-gradient(135deg,#EF4444,#7C5CFF);">SK</div>
+            <div class="n-main">
+              <div class="n-name">Sara Kline — Back End Developer</div>
+              <div class="n-reason">Composite ready (82) but flagged for review — coding rationale cites an untested edge case.</div>
+            </div>
+            <div class="n-time time-critical">Offer window · 2h left</div>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:rgba(255,255,255,0.2); padding:9px 16px;" onclick="openDrawer()">Review</button>
+          </div>
+          <div class="needs-row">
+            <div class="urgency u-critical"></div>
+            <div class="n-av">TM</div>
+            <div class="n-main">
+              <div class="n-name">Tomas Mensah — ML Engineer</div>
+              <div class="n-reason">Access code expires before candidate has started — no interview activity yet.</div>
+            </div>
+            <div class="n-time time-critical">Code expires · 3h left</div>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:rgba(255,255,255,0.2); padding:9px 16px;" onclick="openDrawer()">Review</button>
+          </div>
+          <div class="needs-row">
+            <div class="urgency u-soon"></div>
+            <div class="n-av">EV</div>
+            <div class="n-main">
+              <div class="n-name">Elena Voss — Project Manager</div>
+              <div class="n-reason">Composite complete (91) — top decile for this role, hold expires end of day.</div>
+            </div>
+            <div class="n-time time-soon">Decision due · 9h left</div>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:rgba(255,255,255,0.2); padding:9px 16px;" onclick="openDrawer()">Review</button>
+          </div>
+          <div class="needs-row">
+            <div class="urgency u-ok"></div>
+            <div class="n-av">RH</div>
+            <div class="n-main">
+              <div class="n-name">Ravi Handa — UI/UX Designer</div>
+              <div class="n-reason">Low eye-contact score paired with strong answers — worth a manual look before scoring closes.</div>
+            </div>
+            <div class="n-time time-ok">Review by · tomorrow</div>
+            <button class="btn btn-outline btn-sm" style="color:#fff; border-color:rgba(255,255,255,0.2); padding:9px 16px;" onclick="openDrawer()">Review</button>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <div><h2>Recent candidates</h2><p>Latest sessions across every open role.</p></div>
+          <button class="btn btn-outline btn-sm" style="color:#fff; border-color:rgba(255,255,255,0.2); padding:9px 16px;" onclick="adminGoTo('candidates')">View all</button>
+        </div>
+        <div class="cand-list" id="cand-list-preview"></div>
+      </main>
+
+      <!-- ---- Candidates panel ---- -->
+      <main class="admin-main" id="admin-panel-candidates" style="display:none;">
+        <div class="admin-topbar">
+          <h1>Candidates</h1>
+          <div class="searchbox">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" placeholder="Search candidates, roles, codes...">
+          </div>
+        </div>
+        <div class="filter-bar">
+          <div class="chip-filter active">All roles</div>
+          <div class="chip-filter">Technical</div>
+          <div class="chip-filter">Non-technical</div>
+          <div class="chip-filter">Needs review</div>
+          <div class="chip-filter">Completed</div>
+        </div>
+        <div class="cand-list" id="cand-list-full"></div>
+      </main>
+
+      <!-- ---- Scoring weights panel ---- -->
+      <main class="admin-main" id="admin-panel-weights" style="display:none;">
+        <div class="admin-topbar">
+          <h1>Scoring weights</h1>
+          <div class="searchbox">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" placeholder="Search presets...">
+          </div>
+        </div>
+
+        <div class="role-tabs">
+          <div class="role-tab active" id="rtab-tech" onclick="setWeightMode(true)">Technical roles</div>
+          <div class="role-tab" id="rtab-nontech" onclick="setWeightMode(false)">Non-technical roles</div>
+        </div>
+
+        <div class="weights-grid">
+          <div class="weight-card">
+            <div class="slider-row">
+              <div class="sr-top"><div><div class="sr-label">CV fit score</div><div class="sr-sub">Skill match &amp; relevant experience, scored at upload</div></div><div class="sr-val" id="val-a">20%</div></div>
+              <input type="range" id="slider-a" min="0" max="100" value="20" oninput="onSlide()">
+            </div>
+            <div class="slider-row">
+              <div class="sr-top"><div><div class="sr-label">Live interview score</div><div class="sr-sub">Confidence, eye contact, filler words, relevance</div></div><div class="sr-val" id="val-b">40%</div></div>
+              <input type="range" id="slider-b" min="0" max="100" value="40" oninput="onSlide()">
+            </div>
+            <div class="slider-row">
+              <div class="sr-top"><div><div class="sr-label">Coding score</div><div class="sr-sub">Correctness, structure, approach quality</div></div><div class="sr-val" id="val-c">40%</div></div>
+              <input type="range" id="slider-c" min="0" max="100" value="40" oninput="onSlide()">
+            </div>
+            <div class="sum-row">
+              <div class="sum-lbl">Total weight</div>
+              <div class="sum-val" id="sum-val" style="color:#7FE3B0;">100%</div>
+            </div>
+            <button class="btn btn-primary btn-block" style="margin-top:22px;" onclick="toastMsg('Preset saved.')">Save as new preset</button>
+          </div>
+
+          <div class="weight-card">
+            <h3 style="font-size:15px; margin:0 0 16px; color:#fff;">Saved presets</h3>
+            <div class="presets-list">
+              <div class="preset-item"><div class="p-name">Technical default</div><div class="p-detail">CV 20% · Interview 40% · Coding 40%</div></div>
+              <div class="preset-item"><div class="p-name">Non-technical default</div><div class="p-detail">CV 30% · Interview 70%</div></div>
+              <div class="preset-item"><div class="p-name">Senior engineering</div><div class="p-detail">CV 15% · Interview 25% · Coding 60%</div></div>
+              <div class="preset-item"><div class="p-name">Campus / early-career</div><div class="p-detail">CV 35% · Interview 65%</div></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+</div>
+
+<!-- ============ CANDIDATE DETAIL DRAWER (admin only) ============ -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <h3>Sara Kline</h3>
+        <div class="sub">Back End Developer · Applied Sep 8, 2026</div>
+      </div>
+      <button class="btn btn-outline btn-sm" style="color:#fff; border-color:rgba(255,255,255,0.2);" onclick="closeDrawer()">Close</button>
+    </div>
+
+    <div class="composite-banner">
+      <div><div style="font-size:12px; color:#7FC4FF; font-weight:600; margin-bottom:4px;">Final composite</div><div class="cb-val">82.4</div></div>
+      <div class="cb-label">Weighted 20 / 40 / 40 per technical preset</div>
+    </div>
+
+    <div class="breakdown-row">
+      <div class="br-top"><span>A · CV fit</span><span>88</span></div>
+      <div class="bar"><i style="width:88%; background:linear-gradient(90deg,#7FE3B0,var(--green));"></i></div>
+      <div class="rationale">Strong keyword match on distributed systems and Go; 3 years' relevant experience aligns closely with role requirements.</div>
+    </div>
+    <div class="breakdown-row">
+      <div class="br-top"><span>B · Live interview</span><span>79</span></div>
+      <div class="bar"><i style="width:79%; background:linear-gradient(90deg,#7FC4FF,var(--primary));"></i></div>
+      <div class="rationale">Confidence 84 · Eye contact 72% · Filler words 2.1/min · Emotion stability high · Answer relevance 81 — answers stayed on-topic under follow-up pressure.</div>
+    </div>
+    <div class="breakdown-row">
+      <div class="br-top"><span>C · Coding</span><span>80</span></div>
+      <div class="bar"><i style="width:80%; background:linear-gradient(90deg,#FFCC85,var(--amber));"></i></div>
+      <div class="rationale">Correctness 6/6 tests passed. Clean modular structure. Reasoning was sound but didn't address a concurrent-write edge case — flagged for reviewer attention.</div>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="toastMsg('Candidate advanced to next round.')">Advance to next round</button>
+    <button class="btn btn-outline btn-block" style="margin-top:10px; color:#fff; border-color:rgba(255,255,255,0.2);" onclick="closeDrawer()">Decide later</button>
+  </div>
+</div>
+
+<div class="restart-fab" onclick="resetPrototype()">↺ Restart prototype</div>
+
+<script>
+  let state = { role:null, position:null, positionType:null };
+
+  function go(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    const target = document.getElementById(id);
+    target.classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+    if(id==='screen-report'){ animateBars(); drawQR(); }
+    if(id==='screen-interview'){ resetInterviewCopy(); }
+  }
+
+  function selectRole(role){
+    state.role = role;
+    document.getElementById('chip-student').classList.toggle('selected', role==='student');
+    document.getElementById('chip-industry').classList.toggle('selected', role==='industry');
+    checkRoleForm();
+  }
+
+  function checkRoleForm(){
+    const code = document.getElementById('code-input').value.trim();
+    document.getElementById('role-next').disabled = !(state.role && code.length>=4);
+  }
+
+  function goToPosition(){
+    go(state.role==='student' ? 'screen-position-student' : 'screen-position-industry');
+  }
+
+  function checkPositionForm(selectId, btnId){
+    const val = document.getElementById(selectId).value;
+    state.position = val;
+    state.positionType = (val==='backend' || val==='ml') ? 'coder' : 'noncoder';
+    document.getElementById(btnId).disabled = !val;
+  }
+
+  function joinInterview(){ go('screen-interview'); }
+
+  function resetInterviewCopy(){
+    const label = document.getElementById('round-label');
+    const q = document.getElementById('ai-question');
+    const btn = document.getElementById('interview-next-btn');
+    if(state.positionType==='coder'){
+      label.textContent = 'Round 1 · Conversation';
+      btn.textContent = 'Next: Coding round →';
+    } else {
+      label.textContent = 'Conversation round';
+      btn.textContent = 'End Interview';
+    }
+  }
+
+  function finishFirstRound(){
+    if(state.positionType==='coder'){
+      go('screen-code');
+    } else {
+      finishInterview();
+    }
+  }
+
+  function finishInterview(){
+    if(state.role==='student'){
+      go('screen-report');
+    } else {
+      go('screen-landing');
+    }
+  }
+
+  function runTests(){
+    const out = document.getElementById('console-out');
+    out.innerHTML = '<span class="muted">Running 4 test cases…</span>';
+    setTimeout(()=>{
+      out.innerHTML = '✓ Test 1 passed &nbsp; ✓ Test 2 passed &nbsp; ✓ Test 3 passed &nbsp; ✓ Test 4 passed<br><span class="muted">All tests passed in 42ms.</span>';
+    }, 700);
+  }
+
+  function animateBars(){
+    document.querySelectorAll('.bar-fill').forEach(el=>{
+      el.style.width='0%';
+      requestAnimationFrame(()=> requestAnimationFrame(()=>{ el.style.width = el.dataset.w+'%'; }));
+    });
+  }
+
+  function drawQR(){
+    const canvas = document.getElementById('qr-canvas');
+    const ctx = canvas.getContext('2d');
+    const size = 21;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,size,size);
+    ctx.fillStyle = '#0B1B2B';
+    let seed = 42;
+    function rand(){ seed = (seed*9301+49297) % 233280; return seed/233280; }
+    for(let y=0;y<size;y++){
+      for(let x=0;x<size;x++){
+        const inFinder = (x<7&&y<7)||(x>size-8&&y<7)||(x<7&&y>size-8);
+        if(inFinder) continue;
+        if(rand()>0.56) ctx.fillRect(x,y,1,1);
+      }
+    }
+    function finder(px,py){
+      ctx.fillStyle='#0B1B2B'; ctx.fillRect(px,py,7,7);
+      ctx.fillStyle='#fff'; ctx.fillRect(px+1,py+1,5,5);
+      ctx.fillStyle='#0B1B2B'; ctx.fillRect(px+2,py+2,3,3);
+    }
+    finder(0,0); finder(size-7,0); finder(0,size-7);
+  }
+
+  /* ================= ADMIN CONSOLE ================= */
+  function adminGoTo(panel){
+    ['dashboard','candidates','weights'].forEach(p=>{
+      const rail = document.getElementById('rail-'+p);
+      if(rail) rail.classList.toggle('active', p===panel);
+      const el = document.getElementById('admin-panel-'+p);
+      if(el) el.style.display = (p===panel) ? 'block' : 'none';
+    });
+  }
+
+  function openDrawer(){ document.getElementById('drawer-overlay').classList.add('open'); }
+  function closeDrawer(){ document.getElementById('drawer-overlay').classList.remove('open'); }
+
+  const candidates = [
+    {i:'SK', name:'Sara Kline', role:'Back End Developer', score:82, status:'review'},
+    {i:'EV', name:'Elena Voss', role:'Project Manager', score:91, status:'done'},
+    {i:'RH', name:'Ravi Handa', role:'UI/UX Designer', score:76, status:'progress'},
+    {i:'TM', name:'Tomas Mensah', role:'ML Engineer', score:0, status:'progress'},
+    {i:'LC', name:'Lena Choi', role:'UI/UX Designer', score:88, status:'done'},
+    {i:'DP', name:'Daniel Park', role:'Back End Developer', score:64, status:'review'},
+    {i:'AM', name:'Amara Musa', role:'Project Manager', score:79, status:'done'}
+  ];
+  function statusMeta(s){
+    if(s==='done') return {cls:'st-done', label:'Completed'};
+    if(s==='review') return {cls:'st-review', label:'Needs review'};
+    return {cls:'st-progress', label:'In progress'};
+  }
+  function candRow(c){
+    const sm = statusMeta(c.status);
+    const scoreDisplay = c.score ? c.score : '—';
+    return `<div class="cand-row" onclick="openDrawer()">
+      <div class="n-av">${c.i}</div>
+      <div class="n-main"><div class="n-name">${c.name}</div><div class="cand-role">${c.role}</div></div>
+      <div class="score-pill"><div class="bar"><i style="width:${c.score||0}%"></i></div><div class="val">${scoreDisplay}</div></div>
+      <div class="status-pill ${sm.cls}">${sm.label}</div>
+    </div>`;
+  }
+  const previewEl = document.getElementById('cand-list-preview');
+  const fullEl = document.getElementById('cand-list-full');
+  if(previewEl) previewEl.innerHTML = candidates.slice(0,4).map(candRow).join('');
+  if(fullEl) fullEl.innerHTML = candidates.map(candRow).join('');
+
+  let technicalMode = true;
+  function setWeightMode(isTech){
+    technicalMode = isTech;
+    document.getElementById('rtab-tech').classList.toggle('active', isTech);
+    document.getElementById('rtab-nontech').classList.toggle('active', !isTech);
+    document.getElementById('slider-c').disabled = !isTech;
+    setSliders(isTech ? 20 : 30, isTech ? 40 : 70, isTech ? 40 : 0);
+  }
+  function setSliders(a,b,c){
+    document.getElementById('slider-a').value = a;
+    document.getElementById('slider-b').value = b;
+    document.getElementById('slider-c').value = c;
+    document.getElementById('val-a').textContent = a+'%';
+    document.getElementById('val-b').textContent = b+'%';
+    document.getElementById('val-c').textContent = c+'%';
+    updateSum();
+  }
+  function onSlide(){
+    const a = +document.getElementById('slider-a').value;
+    const b = +document.getElementById('slider-b').value;
+    const c = technicalMode ? +document.getElementById('slider-c').value : 0;
+    document.getElementById('val-a').textContent = a+'%';
+    document.getElementById('val-b').textContent = b+'%';
+    document.getElementById('val-c').textContent = c+'%';
+    updateSum();
+  }
+  function updateSum(){
+    const a = +document.getElementById('slider-a').value;
+    const b = +document.getElementById('slider-b').value;
+    const c = technicalMode ? +document.getElementById('slider-c').value : 0;
+    const total = a+b+c;
+    const el = document.getElementById('sum-val');
+    el.textContent = total+'%';
+    el.style.color = total===100 ? '#7FE3B0' : '#FFCC85';
+  }
+
+  function toastMsg(msg){
+    let t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#0B1B2B; color:#fff; padding:13px 22px; border-radius:12px; font-size:14px; z-index:100; box-shadow:0 12px 32px rgba(0,0,0,0.25); font-family:Poppins,sans-serif;';
+    document.body.appendChild(t);
+    setTimeout(()=>{ t.style.transition='opacity .4s ease'; t.style.opacity='0'; setTimeout(()=>t.remove(),400); }, 2200);
+  }
+
+  function resetPrototype(){
+    state = { role:null, position:null, positionType:null };
+    document.getElementById('code-input').value='';
+    document.getElementById('position-select-industry').value='';
+    document.getElementById('position-select-student').value='';
+    document.getElementById('chip-student').classList.remove('selected');
+    document.getElementById('chip-industry').classList.remove('selected');
+    document.getElementById('role-next').disabled = true;
+    document.getElementById('position-next-industry').disabled = true;
+    document.getElementById('position-next-student').disabled = true;
+    closeDrawer();
+    adminGoTo('dashboard');
+    go('screen-landing');
+  }
+</script>
+</body>
+</html>
